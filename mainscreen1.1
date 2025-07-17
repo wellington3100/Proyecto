@@ -1,0 +1,509 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import mariadb
+from datetime import datetime
+import os
+
+class CursosApp:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("🎓 Sistema Profesional de Cursos")
+        self.root.geometry("800x600")
+        self.root.configure(bg='#f0f8ff')
+        
+        # Configurar estilos
+        self.configurar_estilos()
+        
+        # Crear interfaz principal
+        self.crear_interfaz_principal()
+        
+        # Inicializar base de datos
+        self.inicializar_bd()
+    
+    def configurar_estilos(self):
+        style = ttk.Style()
+        style.theme_use('clam')
+        
+        # Estilo para botones principales
+        style.configure('Main.TButton', 
+                       font=('Arial', 12, 'bold'),
+                       padding=15,
+                       borderwidth=2,
+                       relief='raised')
+        
+        # Estilo para títulos
+        style.configure('Title.TLabel',
+                       font=('Arial', 18, 'bold'),
+                       background='#f0f8ff',
+                       foreground='#1e3a8a')
+        
+        # Estilo para subtítulos
+        style.configure('Subtitle.TLabel',
+                       font=('Arial', 12, 'bold'),
+                       background='#ffffff',
+                       foreground='#374151')
+    
+    def crear_interfaz_principal(self):
+        # Frame principal con padding
+        main_frame = ttk.Frame(self.root, padding="30")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Título principal
+        title_label = ttk.Label(main_frame, 
+                               text="🎓 SISTEMA DE GESTIÓN DE CURSOS",
+                               style='Title.TLabel')
+        title_label.pack(pady=(0, 30))
+        
+        # Subtítulo
+        subtitle_label = ttk.Label(main_frame,
+                                  text="Bienvenido al sistema más completo de gestión educativa",
+                                  font=('Arial', 10, 'italic'),
+                                  background='#f0f8ff',
+                                  foreground='#6b7280')
+        subtitle_label.pack(pady=(0, 40))
+        
+        # Frame para botones
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.pack(expand=True)
+        
+        # Crear botones con iconos y colores
+        self.crear_boton_principal(buttons_frame, "👤 Mi Perfil", self.perfil, 0, 0, "#3b82f6")
+        self.crear_boton_principal(buttons_frame, "📚 Inscribirse a Curso", self.inscribir, 0, 1, "#10b981")
+        self.crear_boton_principal(buttons_frame, "📄 Generar Reporte PDF", self.generar_pdf, 1, 0, "#f59e0b")
+        self.crear_boton_principal(buttons_frame, "🎯 Mis Cursos", self.mis_cursos, 1, 1, "#8b5cf6")
+        
+        # Botón de cerrar especial
+        cerrar_frame = ttk.Frame(main_frame)
+        cerrar_frame.pack(pady=(40, 0))
+        
+        cerrar_btn = tk.Button(cerrar_frame, 
+                              text="❌ Cerrar Aplicación",
+                              command=self.confirmar_cierre,
+                              font=('Arial', 12, 'bold'),
+                              bg='#dc2626',
+                              fg='white',
+                              relief='raised',
+                              borderwidth=3,
+                              padx=20,
+                              pady=10,
+                              cursor='hand2')
+        cerrar_btn.pack()
+        
+        # Footer
+        footer_label = ttk.Label(main_frame,
+                                text="© 2024 Sistema Profesional de Cursos | Versión 1.0",
+                                font=('Arial', 8),
+                                background='#f0f8ff',
+                                foreground='#9ca3af')
+        footer_label.pack(side=tk.BOTTOM, pady=(20, 0))
+    
+    def crear_boton_principal(self, parent, texto, comando, row, col, color):
+        btn = tk.Button(parent,
+                       text=texto,
+                       command=comando,
+                       font=('Arial', 12, 'bold'),
+                       bg=color,
+                       fg='white',
+                       relief='raised',
+                       borderwidth=3,
+                       padx=20,
+                       pady=15,
+                       cursor='hand2',
+                       width=20)
+        btn.grid(row=row, column=col, padx=20, pady=15)
+        
+        # Efectos hover
+        def on_enter(e):
+            btn.config(relief='sunken')
+        
+        def on_leave(e):
+            btn.config(relief='raised')
+        
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+    
+    def conectar_bd(self):
+        try:
+            conn = mariadb.connect(
+                host='localhost',
+                user='root',
+                password='',
+                database='py_cursos'
+            )
+            return conn
+        except Exception as e:
+            messagebox.showerror("❌ Error de Conexión", 
+                               f"No se pudo conectar a la base de datos.\n\nError: {str(e)}")
+            return None
+    
+    def inicializar_bd(self):
+        conn = self.conectar_bd()
+        if conn:
+            cursor = conn.cursor()
+            try:
+                # Crear tablas
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS usuarios (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        nombre VARCHAR(100) NOT NULL,
+                        email VARCHAR(100) UNIQUE NOT NULL,
+                        telefono VARCHAR(20),
+                        fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS cursos (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        nombre VARCHAR(100) NOT NULL,
+                        descripcion TEXT,
+                        duracion INT,
+                        precio DECIMAL(10,2),
+                        instructor VARCHAR(100)
+                    )
+                ''')
+                
+                # Insertar datos de ejemplo
+                cursor.execute("SELECT COUNT(*) FROM cursos")
+                if cursor.fetchone()[0] == 0:
+                    cursos_ejemplo = [
+                        ("Python Avanzado", "Programación avanzada en Python", 60, 599.99, "Dr. García"),
+                        ("Desarrollo Web Full Stack", "HTML, CSS, JavaScript, React", 120, 899.99, "Ing. Martínez"),
+                        ("Ciencia de Datos", "Análisis de datos con Python", 80, 749.99, "Dra. López"),
+                        ("Inteligencia Artificial", "Machine Learning y Deep Learning", 100, 1299.99, "Dr. Rodríguez")
+                    ]
+                    cursor.executemany(
+                        "INSERT INTO cursos (nombre, descripcion, duracion, precio, instructor) VALUES (?, ?, ?, ?, ?)",
+                        cursos_ejemplo
+                    )
+                
+                conn.commit()
+            except Exception as e:
+                messagebox.showerror("❌ Error", f"Error al inicializar BD: {str(e)}")
+            finally:
+                conn.close()
+    
+    def perfil(self):
+        ventana = tk.Toplevel(self.root)
+        ventana.title("👤 Mi Perfil")
+        ventana.geometry("500x400")
+        ventana.configure(bg='#ffffff')
+        ventana.resizable(False, False)
+        
+        # Centrar ventana
+        ventana.transient(self.root)
+        ventana.grab_set()
+        
+        # Frame principal
+        main_frame = ttk.Frame(ventana, padding="30")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Título
+        title_label = ttk.Label(main_frame, 
+                               text="👤 CONFIGURACIÓN DE PERFIL",
+                               style='Subtitle.TLabel')
+        title_label.pack(pady=(0, 30))
+        
+        # Campos de entrada
+        ttk.Label(main_frame, text="Nombre Completo:", font=('Arial', 11, 'bold')).pack(anchor=tk.W, pady=(0, 5))
+        nombre_entry = ttk.Entry(main_frame, width=40, font=('Arial', 11))
+        nombre_entry.pack(pady=(0, 15))
+        
+        ttk.Label(main_frame, text="Correo Electrónico:", font=('Arial', 11, 'bold')).pack(anchor=tk.W, pady=(0, 5))
+        email_entry = ttk.Entry(main_frame, width=40, font=('Arial', 11))
+        email_entry.pack(pady=(0, 15))
+        
+        ttk.Label(main_frame, text="Teléfono:", font=('Arial', 11, 'bold')).pack(anchor=tk.W, pady=(0, 5))
+        telefono_entry = ttk.Entry(main_frame, width=40, font=('Arial', 11))
+        telefono_entry.pack(pady=(0, 30))
+        
+        def validar_y_guardar():
+            nombre = nombre_entry.get().strip()
+            email = email_entry.get().strip()
+            telefono = telefono_entry.get().strip()
+            
+            if not nombre or not email:
+                messagebox.showwarning("⚠️ Campos Requeridos", 
+                                     "Por favor, completa al menos el nombre y email.")
+                return
+            
+            if "@" not in email:
+                messagebox.showerror("❌ Email Inválido", 
+                                   "Por favor, ingresa un email válido.")
+                return
+            
+            # Confirmar guardado
+            if messagebox.askyesno("💾 Confirmar Guardado", 
+                                 f"¿Confirmas guardar el perfil?\n\nNombre: {nombre}\nEmail: {email}"):
+                
+                conn = self.conectar_bd()
+                if conn:
+                    cursor = conn.cursor()
+                    try:
+                        cursor.execute(
+                            "INSERT INTO usuarios (nombre, email, telefono) VALUES (?, ?, ?)",
+                            (nombre, email, telefono)
+                        )
+                        conn.commit()
+                        messagebox.showinfo("✅ Éxito", 
+                                          "¡Perfil guardado exitosamente!")
+                        ventana.destroy()
+                    except mariadb.IntegrityError:
+                        messagebox.showerror("❌ Error", 
+                                           "Este email ya está registrado.")
+                    except Exception as e:
+                        messagebox.showerror("❌ Error", 
+                                           f"Error al guardar: {str(e)}")
+                    finally:
+                        conn.close()
+        
+        # Botones
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(pady=(20, 0))
+        
+        guardar_btn = tk.Button(btn_frame, text="💾 Guardar Perfil", 
+                               command=validar_y_guardar,
+                               bg='#10b981', fg='white',
+                               font=('Arial', 11, 'bold'),
+                               padx=20, pady=10,
+                               cursor='hand2')
+        guardar_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        cancelar_btn = tk.Button(btn_frame, text="❌ Cancelar", 
+                                command=ventana.destroy,
+                                bg='#6b7280', fg='white',
+                                font=('Arial', 11, 'bold'),
+                                padx=20, pady=10,
+                                cursor='hand2')
+        cancelar_btn.pack(side=tk.LEFT)
+    
+    def inscribir(self):
+        ventana = tk.Toplevel(self.root)
+        ventana.title("📚 Inscripción a Cursos")
+        ventana.geometry("700x500")
+        ventana.configure(bg='#ffffff')
+        ventana.resizable(False, False)
+        
+        ventana.transient(self.root)
+        ventana.grab_set()
+        
+        main_frame = ttk.Frame(ventana, padding="30")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        title_label = ttk.Label(main_frame, 
+                               text="📚 CURSOS DISPONIBLES",
+                               style='Subtitle.TLabel')
+        title_label.pack(pady=(0, 20))
+        
+        # Treeview para mostrar cursos
+        columns = ('Curso', 'Instructor', 'Duración', 'Precio')
+        tree = ttk.Treeview(main_frame, columns=columns, show='headings', height=10)
+        
+        # Configurar columnas
+        tree.heading('Curso', text='Nombre del Curso')
+        tree.heading('Instructor', text='Instructor')
+        tree.heading('Duración', text='Duración (hrs)')
+        tree.heading('Precio', text='Precio ($)')
+        
+        tree.column('Curso', width=200)
+        tree.column('Instructor', width=150)
+        tree.column('Duración', width=100)
+        tree.column('Precio', width=100)
+        
+        tree.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        
+        # Cargar cursos
+        conn = self.conectar_bd()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT nombre, instructor, duracion, precio FROM cursos")
+            cursos = cursor.fetchall()
+            
+            for curso in cursos:
+                tree.insert('', tk.END, values=curso)
+            
+            conn.close()
+        
+        def confirmar_inscripcion():
+            selected = tree.selection()
+            if not selected:
+                messagebox.showwarning("⚠️ Selección Requerida", 
+                                     "Por favor, selecciona un curso.")
+                return
+            
+            curso_info = tree.item(selected[0])['values']
+            curso_nombre = curso_info[0]
+            precio = curso_info[3]
+            
+            if messagebox.askyesno("✅ Confirmar Inscripción", 
+                                 f"¿Confirmas tu inscripción al curso?\n\n"
+                                 f"Curso: {curso_nombre}\n"
+                                 f"Precio: ${precio}\n\n"
+                                 f"Esta acción no se puede deshacer."):
+                
+                messagebox.showinfo("🎉 ¡Inscripción Exitosa!", 
+                                  f"¡Felicitaciones!\n\n"
+                                  f"Te has inscrito exitosamente al curso:\n"
+                                  f"'{curso_nombre}'\n\n"
+                                  f"Recibirás un email con los detalles.")
+                ventana.destroy()
+        
+        # Botones
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(pady=(10, 0))
+        
+        inscribir_btn = tk.Button(btn_frame, text="✅ Inscribirse", 
+                                 command=confirmar_inscripcion,
+                                 bg='#10b981', fg='white',
+                                 font=('Arial', 11, 'bold'),
+                                 padx=20, pady=10,
+                                 cursor='hand2')
+        inscribir_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        cancelar_btn = tk.Button(btn_frame, text="❌ Cancelar", 
+                                command=ventana.destroy,
+                                bg='#6b7280', fg='white',
+                                font=('Arial', 11, 'bold'),
+                                padx=20, pady=10,
+                                cursor='hand2')
+        cancelar_btn.pack(side=tk.LEFT)
+    
+    def generar_pdf(self):
+        if messagebox.askyesno("📄 Generar Reporte", 
+                             "¿Deseas generar el reporte de cursos?\n\n"
+                             "Se creará un archivo con toda la información."):
+            
+            try:
+                filename = f"reporte_cursos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                
+                with open(filename, "w", encoding="utf-8") as f:
+                    f.write("=" * 50 + "\n")
+                    f.write("       REPORTE PROFESIONAL DE CURSOS\n")
+                    f.write("=" * 50 + "\n\n")
+                    f.write(f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n\n")
+                    
+                    conn = self.conectar_bd()
+                    if conn:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT nombre, instructor, duracion, precio, descripcion FROM cursos")
+                        cursos = cursor.fetchall()
+                        
+                        f.write("CURSOS DISPONIBLES:\n")
+                        f.write("-" * 30 + "\n\n")
+                        
+                        for i, curso in enumerate(cursos, 1):
+                            f.write(f"{i}. {curso[0]}\n")
+                            f.write(f"   Instructor: {curso[1]}\n")
+                            f.write(f"   Duración: {curso[2]} horas\n")
+                            f.write(f"   Precio: ${curso[3]}\n")
+                            f.write(f"   Descripción: {curso[4]}\n\n")
+                        
+                        conn.close()
+                    
+                    f.write("=" * 50 + "\n")
+                    f.write("Fin del reporte\n")
+                
+                messagebox.showinfo("✅ Reporte Generado", 
+                                  f"¡Reporte generado exitosamente!\n\n"
+                                  f"Archivo: {filename}\n"
+                                  f"Ubicación: {os.path.abspath(filename)}")
+                
+            except Exception as e:
+                messagebox.showerror("❌ Error", 
+                                   f"Error al generar reporte: {str(e)}")
+    
+    def mis_cursos(self):
+        ventana = tk.Toplevel(self.root)
+        ventana.title("🎯 Mis Cursos")
+        ventana.geometry("600x400")
+        ventana.configure(bg='#ffffff')
+        ventana.resizable(False, False)
+        
+        ventana.transient(self.root)
+        ventana.grab_set()
+        
+        main_frame = ttk.Frame(ventana, padding="30")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        title_label = ttk.Label(main_frame, 
+                               text="🎯 MIS CURSOS INSCRITOS",
+                               style='Subtitle.TLabel')
+        title_label.pack(pady=(0, 20))
+        
+        # Listbox con cursos
+        listbox_frame = ttk.Frame(main_frame)
+        listbox_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        listbox = tk.Listbox(listbox_frame, 
+                            font=('Arial', 11),
+                            height=12,
+                            selectmode=tk.SINGLE)
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        scrollbar = ttk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=listbox.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        listbox.configure(yscrollcommand=scrollbar.set)
+        
+        # Cursos de ejemplo
+        cursos_inscritos = [
+            "🐍 Python Avanzado - Progreso: 75%",
+            "🌐 Desarrollo Web Full Stack - Progreso: 45%",
+            "📊 Ciencia de Datos - Progreso: 30%"
+        ]
+        
+        for curso in cursos_inscritos:
+            listbox.insert(tk.END, curso)
+        
+        # Botones
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack()
+        
+        def ver_detalles():
+            selected = listbox.curselection()
+            if selected:
+                curso = listbox.get(selected[0])
+                messagebox.showinfo("📋 Detalles del Curso", 
+                                  f"Información del curso:\n\n{curso}\n\n"
+                                  f"Estado: Activo\n"
+                                  f"Fecha de inscripción: 15/01/2024")
+            else:
+                messagebox.showwarning("⚠️ Selección Requerida", 
+                                     "Selecciona un curso para ver detalles.")
+        
+        detalles_btn = tk.Button(btn_frame, text="📋 Ver Detalles", 
+                                command=ver_detalles,
+                                bg='#3b82f6', fg='white',
+                                font=('Arial', 11, 'bold'),
+                                padx=20, pady=10,
+                                cursor='hand2')
+        detalles_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        cerrar_btn = tk.Button(btn_frame, text="❌ Cerrar", 
+                              command=ventana.destroy,
+                              bg='#6b7280', fg='white',
+                              font=('Arial', 11, 'bold'),
+                              padx=20, pady=10,
+                              cursor='hand2')
+        cerrar_btn.pack(side=tk.LEFT)
+    
+    def confirmar_cierre(self):
+        if messagebox.askyesno("❓ Confirmar Cierre", 
+                             "¿Estás seguro de que deseas cerrar la aplicación?\n\n"
+                             "Se perderán todos los cambios no guardados."):
+            
+            messagebox.showinfo("👋 Hasta Luego", 
+                              "¡Gracias por usar nuestro sistema!\n\n"
+                              "Esperamos verte pronto.")
+            self.root.quit()
+    
+    def run(self):
+        self.root.mainloop()
+
+# Ejecutar aplicación
+if __name__ == "__main__":
+    app = CursosApp()
+    app.run()
