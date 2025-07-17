@@ -1,0 +1,458 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+from db_config import MiBaseDatos
+import sys
+import subprocess
+
+class CursosApp:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Sistema de Cursos - Versión Pro")
+        self.root.state("zoomed")  # Pantalla completa
+        
+        # Configurar tema oscuro/claro
+        self.dark_mode = False
+        
+        # Colores modernos con gradientes
+        self.colors = {
+            'primary': '#1e3a8a',        # Azul profundo
+            'primary_light': '#3b82f6',   # Azul brillante
+            'secondary': '#059669',       # Verde esmeralda
+            'secondary_light': '#10b981', # Verde claro
+            'accent': '#dc2626',         # Rojo vibrante
+            'accent_light': '#ef4444',   # Rojo claro
+            'warning': '#d97706',        # Naranja
+            'warning_light': '#f59e0b',  # Naranja claro
+            'purple': '#7c3aed',         # Púrpura
+            'purple_light': '#8b5cf6',   # Púrpura claro
+            'background': '#f8fafc',     # Gris muy claro
+            'background_alt': '#f1f5f9', # Gris alternativo
+            'card': '#ffffff',           # Blanco puro
+            'card_hover': '#f8fafc',     # Hover de tarjeta
+            'text': '#1e293b',           # Texto principal
+            'text_secondary': '#64748b', # Texto secundario
+            'text_muted': '#94a3b8',     # Texto deshabilitado
+            'border': '#e2e8f0',         # Bordes
+            'shadow': '#0f172a20',       # Sombra
+            'gradient_start': '#667eea',  # Inicio gradiente
+            'gradient_end': '#764ba2'     # Fin gradiente
+        }
+
+        # Fuentes modernas y escalables
+        self.fonts = {
+            'title': ("Segoe UI", 36, "bold"),
+            'subtitle': ("Segoe UI", 18, "normal"),
+            'heading': ("Segoe UI", 20, "bold"),
+            'button': ("Segoe UI", 13, "bold"),
+            'text': ("Segoe UI", 11, "normal"),
+            'caption': ("Segoe UI", 10, "normal"),
+            'large_button': ("Segoe UI", 14, "bold")
+        }
+
+        self.setup_ui()
+        self.db = MiBaseDatos()
+        self.db.conectar()
+
+    def setup_ui(self):
+        self.root.configure(bg=self.colors['background'])
+        
+        # Crear scrollable frame principal
+        canvas = tk.Canvas(self.root, bg=self.colors['background'], highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=self.colors['background'])
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Contenedor principal con padding mejorado
+        main_container = tk.Frame(scrollable_frame, bg=self.colors['background'])
+        main_container.pack(fill='both', expand=True, padx=60, pady=40)
+
+        # Header con gradiente mejorado
+        self.create_header(main_container)
+        
+        # Sección de estadísticas
+        self.create_stats_section(main_container)
+        
+        # Contenedor de tarjetas con animación
+        self.create_cards_section(main_container)
+        
+        # Sección de acceso rápido
+        self.create_quick_access(main_container)
+        
+        # Footer mejorado
+        self.create_footer(main_container)
+        
+        # Configurar scroll
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Bind mouse wheel
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+    def create_header(self, parent):
+        # Header con gradiente simulado y elementos animados
+        header_frame = tk.Frame(parent, bg=self.colors['primary'], height=160)
+        header_frame.pack(fill='x', pady=(0, 40))
+        header_frame.pack_propagate(False)
+        
+        # Crear efecto de gradiente con múltiples frames
+        gradient_frames = []
+        colors = ['#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa']
+        for i, color in enumerate(colors):
+            frame = tk.Frame(header_frame, bg=color, height=40)
+            frame.pack(fill='x', side='top')
+            gradient_frames.append(frame)
+
+        # Contenido del header centrado - CORREGIDO: usar el color del header
+        content_frame = tk.Frame(header_frame, bg=self.colors['primary'])
+        content_frame.place(relx=0.5, rely=0.5, anchor='center')
+        
+        # Título principal con estilo
+        title_frame = tk.Frame(content_frame, bg=self.colors['primary'])
+        title_frame.pack()
+        
+        # Icono y título
+        icon_title_frame = tk.Frame(title_frame, bg=self.colors['primary'])
+        icon_title_frame.pack()
+        
+        tk.Label(icon_title_frame, text="🎓", font=("Segoe UI", 48), 
+                bg=self.colors['primary'], fg='white').pack(side='left', padx=(0, 20))
+        
+        tk.Label(icon_title_frame, text="Sistema de Cursos", 
+                font=self.fonts['title'], bg=self.colors['primary'], fg='white').pack(side='left')
+        
+        # Subtítulo con animación
+        tk.Label(content_frame, text="Plataforma Educativa Inteligente", 
+                font=self.fonts['subtitle'], bg=self.colors['primary'], fg='#bfdbfe').pack(pady=(10, 0))
+        
+        # Botón de configuración en la esquina
+        config_btn = tk.Button(header_frame, text="⚙️", font=("Segoe UI", 16),
+                              bg=self.colors['primary'], fg='white', bd=0, cursor='hand2',
+                              command=self.toggle_theme)
+        config_btn.place(relx=0.98, rely=0.02, anchor='ne')
+
+    def create_stats_section(self, parent):
+        # Sección de estadísticas con tarjetas pequeñas
+        stats_frame = tk.Frame(parent, bg=self.colors['background'])
+        stats_frame.pack(fill='x', pady=(0, 30))
+        
+        tk.Label(stats_frame, text="📊 Resumen de Actividad", 
+                font=self.fonts['heading'], bg=self.colors['background'], 
+                fg=self.colors['text']).pack(anchor='w', pady=(0, 15))
+        
+        # Contenedor de estadísticas
+        stats_container = tk.Frame(stats_frame, bg=self.colors['background'])
+        stats_container.pack(fill='x')
+        
+        # Estadísticas simuladas
+        stats = [
+            {"icon": "📚", "value": "12", "label": "Cursos Activos", "color": self.colors['primary']},
+            {"icon": "🎯", "value": "85%", "label": "Progreso Promedio", "color": self.colors['secondary']},
+            {"icon": "🏆", "value": "8", "label": "Certificados", "color": self.colors['warning']},
+            {"icon": "⭐", "value": "4.9", "label": "Calificación", "color": self.colors['purple']}
+        ]
+        
+        for i, stat in enumerate(stats):
+            self.create_stat_card(stats_container, stat, i)
+
+    def create_stat_card(self, parent, stat, index):
+        # Tarjeta de estadística individual
+        card = tk.Frame(parent, bg=self.colors['card'], relief='solid', bd=1)
+        card.pack(side='left', fill='x', expand=True, padx=5, pady=5)
+        
+        # Agregar sombra - CORREGIDO: usar un color sólido para la sombra
+        shadow = tk.Frame(parent, bg='#e2e8f0', relief='solid', bd=1)
+        shadow.pack(side='left', fill='x', expand=True, padx=7, pady=7)
+        shadow.lower()
+        
+        # Contenido de la tarjeta
+        tk.Label(card, text=stat["icon"], font=("Segoe UI", 24),
+                bg=self.colors['card'], fg=stat["color"]).pack(pady=(15, 5))
+        
+        tk.Label(card, text=stat["value"], font=("Segoe UI", 20, "bold"),
+                bg=self.colors['card'], fg=stat["color"]).pack()
+        
+        tk.Label(card, text=stat["label"], font=self.fonts['caption'],
+                bg=self.colors['card'], fg=self.colors['text_secondary']).pack(pady=(0, 15))
+
+    def create_cards_section(self, parent):
+        # Sección principal de tarjetas
+        cards_frame = tk.Frame(parent, bg=self.colors['background'])
+        cards_frame.pack(fill='both', expand=True, pady=(0, 30))
+        
+        tk.Label(cards_frame, text="🚀 Acciones Principales", 
+                font=self.fonts['heading'], bg=self.colors['background'], 
+                fg=self.colors['text']).pack(anchor='w', pady=(0, 20))
+        
+        # Contenedor de tarjetas con grid mejorado
+        cards_container = tk.Frame(cards_frame, bg=self.colors['background'])
+        cards_container.pack(fill='both', expand=True)
+        
+        # Configuración de botones con gradientes y efectos
+        buttons_config = [
+            {
+                "text": "Mi Perfil", 
+                "icon": "👤", 
+                "command": self.perfil, 
+                "color": self.colors['primary'],
+                "color_light": self.colors['primary_light'],
+                "desc": "Gestiona tu información personal y preferencias"
+            },
+            {
+                "text": "Inscribirme", 
+                "icon": "📚", 
+                "command": self.inscribir, 
+                "color": self.colors['secondary'],
+                "color_light": self.colors['secondary_light'],
+                "desc": "Explora y únete a nuevos cursos disponibles"
+            },
+            {
+                "text": "Generar PDF", 
+                "icon": "📄", 
+                "command": self.generar_pdf, 
+                "color": self.colors['warning'],
+                "color_light": self.colors['warning_light'],
+                "desc": "Exporta certificados y reportes de progreso"
+            },
+            {
+                "text": "Mis Cursos", 
+                "icon": "🎯", 
+                "command": self.mis_cursos, 
+                "color": self.colors['purple'],
+                "color_light": self.colors['purple_light'],
+                "desc": "Revisa tu progreso y contenido de cursos"
+            },
+            {
+                "text": "Calendario", 
+                "icon": "📅", 
+                "command": self.calendario, 
+                "color": self.colors['secondary'],
+                "color_light": self.colors['secondary_light'],
+                "desc": "Programa y gestiona tus horarios de estudio"
+            },
+            {
+                "text": "Configuración", 
+                "icon": "⚙️", 
+                "command": self.configuracion, 
+                "color": self.colors['text_secondary'],
+                "color_light": self.colors['text_muted'],
+                "desc": "Personaliza tu experiencia de aprendizaje"
+            }
+        ]
+        
+        # Crear grid de tarjetas 2x3
+        for i, btn_config in enumerate(buttons_config):
+            row = i // 3
+            col = i % 3
+            self.create_modern_card(cards_container, btn_config, row, col)
+
+    def create_modern_card(self, parent, config, row, col):
+        # Configurar grid
+        parent.grid_rowconfigure(row, weight=1, pad=10)
+        parent.grid_columnconfigure(col, weight=1, pad=10)
+        
+        # Frame principal de la tarjeta con sombra
+        card_frame = tk.Frame(parent, bg=self.colors['card'], relief='flat', bd=0)
+        card_frame.grid(row=row, column=col, padx=15, pady=15, sticky='nsew', ipady=10)
+        
+        # Sombra de la tarjeta - CORREGIDO: usar color sólido
+        shadow_frame = tk.Frame(parent, bg='#e2e8f0', relief='flat', bd=0)
+        shadow_frame.grid(row=row, column=col, padx=18, pady=18, sticky='nsew', ipady=10)
+        shadow_frame.lower()
+        
+        # Header de la tarjeta
+        header_frame = tk.Frame(card_frame, bg=config["color"], height=60)
+        header_frame.pack(fill='x', padx=0, pady=0)
+        header_frame.pack_propagate(False)
+        
+        # Icono en el header
+        tk.Label(header_frame, text=config["icon"], font=("Segoe UI", 28),
+                bg=config["color"], fg='white').pack(pady=15)
+        
+        # Contenido de la tarjeta
+        content_frame = tk.Frame(card_frame, bg=self.colors['card'])
+        content_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Título del botón
+        title_label = tk.Label(content_frame, text=config["text"],
+                              font=self.fonts['large_button'], bg=self.colors['card'],
+                              fg=self.colors['text'])
+        title_label.pack(pady=(0, 10))
+        
+        # Descripción
+        desc_label = tk.Label(content_frame, text=config["desc"],
+                             font=self.fonts['text'], bg=self.colors['card'],
+                             fg=self.colors['text_secondary'], wraplength=250,
+                             justify='left')
+        desc_label.pack(pady=(0, 15))
+        
+        # Botón de acción
+        action_btn = tk.Button(content_frame, text=f"Acceder →",
+                              command=config["command"],
+                              font=self.fonts['button'],
+                              bg=config["color"], fg='white',
+                              activebackground=config["color_light"],
+                              activeforeground='white',
+                              relief='flat', bd=0, cursor='hand2',
+                              padx=20, pady=8)
+        action_btn.pack(anchor='center')
+        
+        # Efectos hover para toda la tarjeta
+        self.bind_card_hover_effects(card_frame, header_frame, action_btn, config)
+
+    def bind_card_hover_effects(self, card, header, button, config):
+        def on_enter(event):
+            card.configure(bg=self.colors['card_hover'])
+            header.configure(bg=config["color_light"])
+            button.configure(bg=config["color_light"])
+            
+        def on_leave(event):
+            card.configure(bg=self.colors['card'])
+            header.configure(bg=config["color"])
+            button.configure(bg=config["color"])
+        
+        # Bind a todos los elementos de la tarjeta
+        for widget in [card, header, button]:
+            widget.bind("<Enter>", on_enter)
+            widget.bind("<Leave>", on_leave)
+
+    def create_quick_access(self, parent):
+        # Sección de acceso rápido
+        quick_frame = tk.Frame(parent, bg=self.colors['background'])
+        quick_frame.pack(fill='x', pady=(0, 30))
+        
+        tk.Label(quick_frame, text="⚡ Acceso Rápido", 
+                font=self.fonts['heading'], bg=self.colors['background'], 
+                fg=self.colors['text']).pack(anchor='w', pady=(0, 15))
+        
+        # Botones de acceso rápido
+        quick_buttons_frame = tk.Frame(quick_frame, bg=self.colors['background'])
+        quick_buttons_frame.pack(fill='x')
+        
+        quick_actions = [
+            {"text": "🔔 Notificaciones", "command": self.notificaciones},
+            {"text": "📈 Progreso", "command": self.progreso},
+            {"text": "💬 Mensajes", "command": self.mensajes},
+            {"text": "🔍 Buscar", "command": self.buscar},
+            {"text": "❓ Ayuda", "command": self.ayuda},
+            {"text": "🚪 Salir", "command": self.cerrar}
+        ]
+        
+        for i, action in enumerate(quick_actions):
+            btn = tk.Button(quick_buttons_frame, text=action["text"],
+                           command=action["command"],
+                           font=self.fonts['button'],
+                           bg=self.colors['card'], fg=self.colors['text'],
+                           activebackground=self.colors['primary'],
+                           activeforeground='white',
+                           relief='solid', bd=1, cursor='hand2',
+                           padx=15, pady=8)
+            btn.pack(side='left', padx=5, pady=5)
+            
+            # Efecto hover para botones rápidos
+            self.bind_quick_hover_effects(btn)
+
+    def bind_quick_hover_effects(self, widget):
+        def on_enter(event):
+            widget.configure(bg=self.colors['primary'], fg='white')
+            
+        def on_leave(event):
+            widget.configure(bg=self.colors['card'], fg=self.colors['text'])
+            
+        widget.bind("<Enter>", on_enter)
+        widget.bind("<Leave>", on_leave)
+
+    def create_footer(self, parent):
+        # Footer mejorado con más información
+        footer_frame = tk.Frame(parent, bg=self.colors['background_alt'], height=80)
+        footer_frame.pack(fill='x', pady=(20, 0))
+        footer_frame.pack_propagate(False)
+        
+        # Información del footer
+        info_frame = tk.Frame(footer_frame, bg=self.colors['background_alt'])
+        info_frame.pack(expand=True, fill='both')
+        
+        tk.Label(info_frame, text="© 2024 Sistema de Cursos Pro - Desarrollado con ❤️ y Python", 
+                font=self.fonts['text'], bg=self.colors['background_alt'], 
+                fg=self.colors['text_secondary']).pack(pady=(15, 5))
+        
+        tk.Label(info_frame, text="Versión 2.0 | Última actualización: Julio 2024", 
+                font=self.fonts['caption'], bg=self.colors['background_alt'], 
+                fg=self.colors['text_muted']).pack()
+
+    def toggle_theme(self):
+        """Alternar entre tema claro y oscuro"""
+        self.show_message("Tema", "Función de cambio de tema en desarrollo 🌓")
+
+    def show_message(self, title, message, msg_type="info"):
+        """Muestra mensajes con estilo mejorado"""
+        if msg_type == "info":
+            messagebox.showinfo(title, message)
+        elif msg_type == "warning":
+            messagebox.showwarning(title, message)
+        elif msg_type == "error":
+            messagebox.showerror(title, message)
+        elif msg_type == "success":
+            messagebox.showinfo(title, message)
+
+    # Funciones de la aplicación (mantenidas igual)
+    def perfil(self):
+        self.show_message("Mi Perfil", "Función de perfil en desarrollo 👤\n\nAquí podrás:\n• Editar información personal\n• Cambiar foto de perfil\n• Configurar preferencias", "info")
+
+    def inscribir(self):
+        self.show_message("Inscripciones", "Función de inscripción en desarrollo 📚\n\nDisponible próximamente:\n• Catálogo de cursos\n• Inscripción automática\n• Seguimiento de plazas", "info")
+
+    def generar_pdf(self):
+        self.show_message("Generar PDF", "Función de generación de PDF en desarrollo 📄\n\nPodrás generar:\n• Certificados de cursos\n• Reportes de progreso\n• Historial académico", "info")
+
+    def mis_cursos(self):
+        self.show_message("Mis Cursos", "Función de mis cursos en desarrollo 🎯\n\nFuncionalidades:\n• Ver cursos activos\n• Seguimiento de progreso\n• Acceso a materiales", "info")
+
+    def calendario(self):
+        self.show_message("Calendario", "Función de calendario en desarrollo 📅\n\nIncluirá:\n• Programación de clases\n• Recordatorios\n• Eventos académicos", "info")
+
+    def configuracion(self):
+        self.show_message("Configuración", "Función de configuración en desarrollo ⚙️\n\nOpciones disponibles:\n• Preferencias de usuario\n• Notificaciones\n• Tema de la aplicación", "info")
+
+    def notificaciones(self):
+        self.show_message("Notificaciones", "No tienes notificaciones nuevas 🔔", "info")
+
+    def progreso(self):
+        self.show_message("Progreso", "Tu progreso general es del 85% 📈", "success")
+
+    def mensajes(self):
+        self.show_message("Mensajes", "No tienes mensajes nuevos 💬", "info")
+
+    def buscar(self):
+        self.show_message("Buscar", "Función de búsqueda en desarrollo 🔍", "info")
+
+    def ayuda(self):
+        self.show_message("Ayuda", "Sistema de Cursos Pro v2.0\n\nPara soporte contacta:\n📧 soporte@cursospro.com\n📞 +52 123 456 7890\n\n¡Gracias por usar nuestro sistema! ❓", "info")
+
+    def cerrar(self):
+        result = messagebox.askyesnocancel("Confirmar Salida", 
+                                          "¿Estás seguro de que deseas cerrar la aplicación?\n\nTodos los datos se guardarán automáticamente.")
+        if result:
+            self.root.quit()
+
+    def run(self):
+        try:
+            self.root.mainloop()
+        except Exception as e:
+            messagebox.showerror("Error", f"Error en la aplicación: {str(e)}")
+        finally:
+            if hasattr(self, 'db'):
+                self.db.desconectar()
+
+
+if __name__ == "__main__":
+    app = CursosApp()
+    app.run()
